@@ -65,10 +65,25 @@
             border-radius: 999px;
             cursor: pointer;
             font-weight: bold;
+            text-decoration: none;
         }
 
         .download-btn:hover {
             background: #1d4ed8;
+        }
+
+        .threshold-input {
+            width: 95px;
+            padding: 9px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 999px;
+            outline: none;
+        }
+
+        .threshold-label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #374151;
         }
 
         .dashboard {
@@ -150,7 +165,16 @@
 
         <div class="actions">
             <div class="status">● Live Monitoring</div>
+
+            <span class="threshold-label">Room 1 Limit:</span>
+            <input type="number" id="room1Threshold" value="2100" class="threshold-input">
+
+            <span class="threshold-label">Room 2 Limit:</span>
+            <input type="number" id="room2Threshold" value="3200" class="threshold-input">
+
+            <button class="download-btn" onclick="applyThresholds()">Apply Thresholds</button>
             <button class="download-btn" onclick="downloadCSV()">Download Data</button>
+            <a href="history.html" class="download-btn">View History</a>
         </div>
     </div>
 
@@ -202,14 +226,18 @@
         Data retrieved from ThingSpeak API
     </div>
 
-    <script type="module">
+    <script>
         const CHANNEL_ID = "3383817";
         const READ_API_KEY = "EN1K5K8URM09ZUAK";
 
         let charts = [];
 
+        let room1NoiseThreshold = 2100;
+        let room2NoiseThreshold = 3200;
+
         async function loadData() {
-            const url = `https://api.thingspeak.com/channels/3383817/feeds.json?api_key=EN1K5K8URM09ZUAK&results=20`;
+            const url =
+                `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?api_key=${READ_API_KEY}&results=20`;
 
             const response = await fetch(url);
             const data = await response.json();
@@ -222,23 +250,60 @@
             charts.forEach(chart => chart.destroy());
             charts = [];
 
-            charts.push(createChart("room1TempChart", "Temperature °C", labels, feeds.map(f => Number(f.field1))));
-            charts.push(createChart("room1NoiseChart", "Noise Level", labels, feeds.map(f => Number(f.field2))));
-            charts.push(createChart("room2TempChart", "Temperature °C", labels, feeds.map(f => Number(f.field3))));
-            charts.push(createChart("room2NoiseChart", "Noise Level", labels, feeds.map(f => Number(f.field4))));
+            charts.push(
+                createChart(
+                    "room1TempChart",
+                    "Temperature °C",
+                    labels,
+                    feeds.map(f => cleanValue(f.field1))
+                )
+            );
+
+            charts.push(
+                createChart(
+                    "room1NoiseChart",
+                    "Noise Level (Audio Signal)",
+                    labels,
+                    feeds.map(f => cleanValue(f.field2))
+                )
+            );
+
+            charts.push(
+                createChart(
+                    "room2TempChart",
+                    "Temperature °C",
+                    labels,
+                    feeds.map(f => cleanValue(f.field3))
+                )
+            );
+
+            charts.push(
+                createChart(
+                    "room2NoiseChart",
+                    "Noise Level (Audio Signal)",
+                    labels,
+                    feeds.map(f => cleanValue(f.field4))
+                )
+            );
+        }
+
+        function cleanValue(value) {
+            if (value === null || value === undefined || value === "") {
+                return null;
+            }
+
+            return Number(value);
         }
 
         function createChart(canvasId, label, labels, values) {
-
             let threshold = null;
 
-            // Set different limits per room
             if (canvasId === "room1NoiseChart") {
-                threshold = 2100;
+                threshold = room1NoiseThreshold;
             }
 
             if (canvasId === "room2NoiseChart") {
-                threshold = 3200;
+                threshold = room2NoiseThreshold;
             }
 
             return new Chart(document.getElementById(canvasId), {
@@ -248,8 +313,6 @@
                     labels: labels,
 
                     datasets: [
-
-                        // Main Data
                         {
                             label: label,
                             data: values,
@@ -259,7 +322,6 @@
                             fill: false
                         },
 
-                        // Threshold Line
                         ...(threshold !== null ? [{
                             label: `Noisy Threshold (${threshold})`,
                             data: Array(values.length).fill(threshold),
@@ -269,7 +331,6 @@
                             pointRadius: 0,
                             fill: false
                         }] : [])
-
                     ]
                 },
 
@@ -304,9 +365,24 @@
             });
         }
 
-        async function downloadCSV() {
+        function applyThresholds() {
+            const room1Input = Number(document.getElementById("room1Threshold").value);
+            const room2Input = Number(document.getElementById("room2Threshold").value);
 
-            const url = `https://api.thingspeak.com/channels/3383817/feeds.json?api_key=EN1K5K8URM09ZUAK&results=20'`;
+            if (isNaN(room1Input) || isNaN(room2Input)) {
+                alert("Please enter valid threshold numbers.");
+                return;
+            }
+
+            room1NoiseThreshold = room1Input;
+            room2NoiseThreshold = room2Input;
+
+            loadData();
+        }
+
+        async function downloadCSV() {
+            const url =
+                `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?api_key=${READ_API_KEY}&results=100`;
 
             const response = await fetch(url);
             const data = await response.json();
@@ -318,14 +394,13 @@
             rows.push([
                 "Date & Time",
                 "Room 1 Temperature (°C)",
-                "Room 1 Noise",
+                "Room 1 Noise (Audio Signal)",
                 "Room 2 Temperature (°C)",
-                "Room 2 Noise"
+                "Room 2 Noise (Audio Signal)"
             ]);
 
             feeds.forEach(feed => {
                 const date = new Date(feed.created_at);
-
                 const formattedDate = date.toLocaleString().replace(",", "");
 
                 rows.push([
