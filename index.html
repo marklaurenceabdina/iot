@@ -209,7 +209,7 @@
         let charts = [];
 
         async function loadData() {
-            const url = `https://api.thingspeak.com/channels/3383817/feeds.json?api_key=EN1K5K8URM09ZUAK&results=20`;
+            const url = `https://api.thingspeak.com/channels/3383817/feeds.json?api_key=EN1K5K8URM09ZUAK&results=100`;
 
             const response = await fetch(url);
             const data = await response.json();
