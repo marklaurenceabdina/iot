@@ -203,22 +203,6 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDB_nC3F14Lm4yudIeyT_SIr9poFwZaEeA",
-            authDomain: "iot-group1-25fed.firebaseapp.com",
-            projectId: "iot-group1-25fed",
-            storageBucket: "iot-group1-25fed.firebasestorage.app",
-            messagingSenderId: "1065124629102",
-            appId: "1:1065124629102:web:f8bb1b7de9ba62571a347f",
-            measurementId: "G-WXZBPF2Q0Y"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-
         const CHANNEL_ID = "3383817";
         const READ_API_KEY = "EN1K5K8URM09ZUAK";
 
@@ -326,7 +310,7 @@
         }
 
         loadData();
-        setInterval(loadData, 20000);
+        setInterval(loadData, 15000);
     </script>
 
 </body>
