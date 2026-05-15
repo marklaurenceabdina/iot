@@ -229,30 +229,75 @@
         }
 
         function createChart(canvasId, label, labels, values) {
+
+            let threshold = null;
+
+            // Set different limits per room
+            if (canvasId === "room1NoiseChart") {
+                threshold = 2100;
+            }
+
+            if (canvasId === "room2NoiseChart") {
+                threshold = 3200;
+            }
+
             return new Chart(document.getElementById(canvasId), {
                 type: "line",
+
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: label,
-                        data: values,
-                        borderWidth: 3,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        fill: false
-                    }]
+
+                    datasets: [
+
+                        // Main Data
+                        {
+                            label: label,
+                            data: values,
+                            borderWidth: 3,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            fill: false
+                        },
+
+                        // Threshold Line
+                        ...(threshold !== null ? [{
+                            label: `Noisy Threshold (${threshold})`,
+                            data: Array(values.length).fill(threshold),
+                            borderColor: "red",
+                            borderWidth: 2,
+                            borderDash: [10, 5],
+                            pointRadius: 0,
+                            fill: false
+                        }] : [])
+
+                    ]
                 },
+
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+
                     plugins: {
                         legend: {
                             display: true
                         }
                     },
+
                     scales: {
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+
+                            title: {
+                                display: true,
+                                text: label
+                            }
+                        },
+
+                        x: {
+                            title: {
+                                display: true,
+                                text: "Time"
+                            }
                         }
                     }
                 }
@@ -261,7 +306,7 @@
 
         async function downloadCSV() {
 
-            const url = `https://api.thingspeak.com/channels/3383817/feeds.json?api_key=EN1K5K8URM09ZUAK&results=100`;
+            const url = `https://api.thingspeak.com/channels/3383817/feeds.json?api_key=EN1K5K8URM09ZUAK&results=20'`;
 
             const response = await fetch(url);
             const data = await response.json();
