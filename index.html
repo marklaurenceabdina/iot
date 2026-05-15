@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>EQLibrary Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(135deg, #eaf4ff, #f8fbff);
+            color: #1f2937;
+            padding: 30px;
+        }
+
+        .topbar {
+            background: #ffffff;
+            padding: 24px 30px;
+            border-radius: 18px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .topbar h1 {
+            margin: 0;
+            color: #0f4c81;
+            font-size: 28px;
+        }
+
+        .topbar p {
+            margin: 6px 0 0;
+            color: #6b7280;
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .status {
+            background: #dcfce7;
+            color: #166534;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .download-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 11px 16px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .download-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+        }
+
+        .chart-card {
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e5e7eb;
+        }
+
+        .chart-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .chart-title h2 {
+            margin: 0;
+            font-size: 18px;
+            color: #111827;
+        }
+
+        .badge {
+            background: #eff6ff;
+            color: #1d4ed8;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .chart-area {
+            height: 260px;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 25px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding: 18px;
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="topbar">
+        <div>
+            <h1>EQLibrary Monitor</h1>
+            <p>Real-time temperature and noise monitoring system</p>
+        </div>
+
+        <div class="actions">
+            <div class="status">● Live Monitoring</div>
+            <button class="download-btn" onclick="downloadCSV()">Download Data</button>
+        </div>
+    </div>
+
+    <div class="dashboard">
+
+        <div class="chart-card">
+            <div class="chart-title">
+                <h2>Room 1 Temperature</h2>
+                <span class="badge">Field 1</span>
+            </div>
+            <div class="chart-area">
+                <canvas id="room1TempChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-title">
+                <h2>Room 1 Noise</h2>
+                <span class="badge">Field 2</span>
+            </div>
+            <div class="chart-area">
+                <canvas id="room1NoiseChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-title">
+                <h2>Room 2 Temperature</h2>
+                <span class="badge">Field 3</span>
+            </div>
+            <div class="chart-area">
+                <canvas id="room2TempChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-title">
+                <h2>Room 2 Noise</h2>
+                <span class="badge">Field 4</span>
+            </div>
+            <div class="chart-area">
+                <canvas id="room2NoiseChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Data retrieved from ThingSpeak API
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDB_nC3F14Lm4yudIeyT_SIr9poFwZaEeA",
+            authDomain: "iot-group1-25fed.firebaseapp.com",
+            projectId: "iot-group1-25fed",
+            storageBucket: "iot-group1-25fed.firebasestorage.app",
+            messagingSenderId: "1065124629102",
+            appId: "1:1065124629102:web:f8bb1b7de9ba62571a347f",
+            measurementId: "G-WXZBPF2Q0Y"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+
+        const CHANNEL_ID = "3383817";
+        const READ_API_KEY = "EN1K5K8URM09ZUAK";
+
+        let charts = [];
+
+        async function loadData() {
+            const url = `https://api.thingspeak.com/channels/3383817/feeds.json?api_key=EN1K5K8URM09ZUAK&results=20`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+            const feeds = data.feeds || [];
+
+            const labels = feeds.map(feed =>
+                new Date(feed.created_at).toLocaleTimeString()
+            );
+
+            charts.forEach(chart => chart.destroy());
+            charts = [];
+
+            charts.push(createChart("room1TempChart", "Temperature °C", labels, feeds.map(f => Number(f.field1))));
+            charts.push(createChart("room1NoiseChart", "Noise Level", labels, feeds.map(f => Number(f.field2))));
+            charts.push(createChart("room2TempChart", "Temperature °C", labels, feeds.map(f => Number(f.field3))));
+            charts.push(createChart("room2NoiseChart", "Noise Level", labels, feeds.map(f => Number(f.field4))));
+        }
+
+        function createChart(canvasId, label, labels, values) {
+            return new Chart(document.getElementById(canvasId), {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: values,
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        async function downloadCSV() {
+
+            const url = `https://api.thingspeak.com/channels/3383817/feeds.json?api_key=EN1K5K8URM09ZUAK&results=100`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            const feeds = data.feeds || [];
+
+            let rows = [];
+
+            rows.push([
+                "Date & Time",
+                "Room 1 Temperature (°C)",
+                "Room 1 Noise",
+                "Room 2 Temperature (°C)",
+                "Room 2 Noise"
+            ]);
+
+            feeds.forEach(feed => {
+                const date = new Date(feed.created_at);
+
+                const formattedDate = date.toLocaleString().replace(",", "");
+
+                rows.push([
+                    formattedDate,
+                    feed.field1 || "0",
+                    feed.field2 || "0",
+                    feed.field3 || "0",
+                    feed.field4 || "0"
+                ]);
+            });
+
+            const csvContent = rows
+                .map(row => row.map(value => `"${value}"`).join(","))
+                .join("\n");
+
+            const blob = new Blob([csvContent], {
+                type: "text/csv;charset=utf-8;"
+            });
+
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "EQLibrary_Data.csv";
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        loadData();
+        setInterval(loadData, 20000);
+    </script>
+
+</body>
+
+</html>
